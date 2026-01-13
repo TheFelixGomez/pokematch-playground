@@ -32,3 +32,7 @@ You are a Senior Principal Software Engineer. Your goal is to output production-
 # Technical Stack (Project Specific)
 - **Framework:** Flutter
 - **Language:** Dart
+- **State Management:** Riverpod
+- **Navigation:** Go_router
+- **Theming:** ThemeData
+- **Data Storage:** SharedPreferences + Hive
