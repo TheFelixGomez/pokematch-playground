@@ -46,12 +46,12 @@ final favoritesProvider = NotifierProvider<FavoritesNotifier, List<WordPair>>(
 );
 
 class FavoritesNotifier extends Notifier<List<WordPair>> {
-  late Box box;
+  late Box _box;
 
   @override
   List<WordPair> build() {
-    box = Hive.box('favorites');
-    final stored = box.keys.map((key) {
+    _box = Hive.box('favorites');
+    final stored = _box.keys.map((key) {
       final str = key as String;
       final parts = str.split('|');
       return WordPair(parts[0], parts[1]);
@@ -62,17 +62,17 @@ class FavoritesNotifier extends Notifier<List<WordPair>> {
   void toggleFavorite(WordPair current) {
     final key = "${current.first}|${current.second}";
     if (state.contains(current)) {
-      box.delete(key);
+      _box.delete(key);
       state = state.where((p) => p != current).toList();
     } else {
-      box.put(key, true);
+      _box.put(key, true);
       state = [...state, current];
     }
   }
 
   void removeFavorite(WordPair pair) {
     final key = "${pair.first}|${pair.second}";
-    box.delete(key);
+    _box.delete(key);
     state = state.where((p) => p != pair).toList();
   }
 }
