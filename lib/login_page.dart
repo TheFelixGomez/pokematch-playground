@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
-import 'main.dart';
+import 'package:go_router/go_router.dart'; // Import go_router
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'auth_service.dart';
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -20,12 +22,10 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _login() {
+  void _login() async {
     if (_formKey.currentState!.validate()) {
-      // For now, just a fake login. Navigate to Home.
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => MyHomePage()),
-      );
+      await ref.read(authServiceProvider.notifier).login();
+      // Router will handle navigation
     }
   }
 

@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'login_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'router.dart';
 
 final deckProvider = NotifierProvider<DeckNotifier, List<WordPair>>(() {
   return DeckNotifier();
@@ -121,8 +120,9 @@ class MyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
+    final router = ref.watch(routerProvider);
 
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'Namer App',
       theme: ThemeData(
         useMaterial3: true,
@@ -136,102 +136,7 @@ class MyApp extends ConsumerWidget {
         ),
       ),
       themeMode: themeMode,
-      home: LoginPage(),
-    );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  var selectedIndex = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    Widget page;
-    switch (selectedIndex) {
-      case 0:
-        page = GeneratorPage();
-      case 1:
-        page = FavoritesPage();
-      default:
-        throw UnimplementedError('no widget for $selectedIndex');
-    }
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth < 600) {
-          return Scaffold(
-            appBar: AppBar(
-              title: Text('Namer App'),
-              actions: [ThemeSelector()],
-            ),
-            body: Container(
-              color: Theme.of(context).colorScheme.primaryContainer,
-              child: page,
-            ),
-            bottomNavigationBar: NavigationBar(
-              destinations: [
-                NavigationDestination(
-                  icon: Icon(Icons.home),
-                  label: 'Home',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.favorite),
-                  label: 'Favorites',
-                ),
-              ],
-              selectedIndex: selectedIndex,
-              onDestinationSelected: (value) {
-                setState(() {
-                  selectedIndex = value;
-                });
-              },
-            ),
-          );
-        } else {
-          return Scaffold(
-            appBar: AppBar(
-              title: Text('Namer App'),
-              actions: [ThemeSelector()],
-            ),
-            body: Row(
-              children: [
-                SafeArea(
-                  child: NavigationRail(
-                    extended: constraints.maxWidth >= 600,
-                    destinations: [
-                      NavigationRailDestination(
-                        icon: Icon(Icons.home),
-                        label: Text('Home'),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(Icons.favorite),
-                        label: Text('Favorites'),
-                      ),
-                    ],
-                    selectedIndex: selectedIndex,
-                    onDestinationSelected: (value) {
-                      setState(() {
-                        selectedIndex = value;
-                      });
-                    },
-                  ),
-                ),
-                Expanded(
-                  child: Container(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    child: page,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-      },
+      routerConfig: router,
     );
   }
 }
@@ -348,33 +253,6 @@ class FavoritesPage extends ConsumerWidget {
     );
   }
 }
-
-class ThemeSelector extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(themeModeProvider);
-    return PopupMenuButton<ThemeMode>(
-      initialValue: themeMode,
-      onSelected: (ThemeMode mode) {
-        ref.read(themeModeProvider.notifier).setThemeMode(mode);
-      },
-      itemBuilder: (context) => [
-        PopupMenuItem(value: ThemeMode.system, child: Text('System')),
-        PopupMenuItem(value: ThemeMode.light, child: Text('Light')),
-        PopupMenuItem(value: ThemeMode.dark, child: Text('Dark')),
-      ],
-      icon: Icon(
-        themeMode == ThemeMode.light
-            ? Icons.light_mode
-            : themeMode == ThemeMode.dark
-                ? Icons.dark_mode
-                : Icons.settings_brightness,
-      ),
-    );
-  }
-}
-
-
 
 class SwipePage extends ConsumerWidget {
   @override
