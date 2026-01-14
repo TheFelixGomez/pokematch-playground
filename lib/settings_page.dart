@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'main.dart'; // To access themeModeProvider
 
 class SettingsPage extends ConsumerWidget {
+  const SettingsPage({super.key});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     var themeMode = ref.watch(themeModeProvider);
@@ -15,32 +17,32 @@ class SettingsPage extends ConsumerWidget {
             child: Text('Settings', style: Theme.of(context).textTheme.headlineMedium),
           ),
           ExpansionTile(
-            title: Text('Theme'),
-            leading: Icon(Icons.palette),
+            title: const Text('Theme'),
+            leading: const Icon(Icons.palette),
             children: [
-              RadioListTile<ThemeMode>(
-                title: Text('System'),
-                value: ThemeMode.system,
+              RadioGroup<ThemeMode>(
                 groupValue: themeMode,
                 onChanged: (value) {
-                  ref.read(themeModeProvider.notifier).setThemeMode(value!);
+                  if (value != null) {
+                    ref.read(themeModeProvider.notifier).setThemeMode(value);
+                  }
                 },
-              ),
-              RadioListTile<ThemeMode>(
-                title: Text('Light'),
-                value: ThemeMode.light,
-                groupValue: themeMode,
-                onChanged: (value) {
-                  ref.read(themeModeProvider.notifier).setThemeMode(value!);
-                },
-              ),
-              RadioListTile<ThemeMode>(
-                title: Text('Dark'),
-                value: ThemeMode.dark,
-                groupValue: themeMode,
-                onChanged: (value) {
-                  ref.read(themeModeProvider.notifier).setThemeMode(value!);
-                },
+                child: Column(
+                  children: [
+                    RadioListTile<ThemeMode>(
+                      title: const Text('System'),
+                      value: ThemeMode.system,
+                    ),
+                    RadioListTile<ThemeMode>(
+                      title: const Text('Light'),
+                      value: ThemeMode.light,
+                    ),
+                    RadioListTile<ThemeMode>(
+                      title: const Text('Dark'),
+                      value: ThemeMode.dark,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
