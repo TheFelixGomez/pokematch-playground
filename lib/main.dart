@@ -1,4 +1,3 @@
-import 'package:english_words/english_words.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
@@ -6,75 +5,112 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/notification_service.dart';
 import 'router.dart';
+import 'models/pokemon.dart';
+import 'services/pokemon_service.dart';
 
-final deckProvider = NotifierProvider<DeckNotifier, List<WordPair>>(() {
-  return DeckNotifier();
+// Service Provider
+final pokemonServiceProvider = Provider((ref) => PokemonService());
+
+// Pokemon List Notifier (Replaces DeckNotifier)
+final pokemonListProvider = AsyncNotifierProvider<PokemonListNotifier, List<Pokemon>>(() {
+  return PokemonListNotifier();
 });
 
-class DeckNotifier extends Notifier<List<WordPair>> {
+class PokemonListNotifier extends AsyncNotifier<List<Pokemon>> {
+  int _offset = 0;
+  final int _limit = 20;
+
   @override
-  List<WordPair> build() {
-    // Generate initial batch of 10 words
-    return List.generate(10, (_) => WordPair.random());
+  Future<List<Pokemon>> build() async {
+    _offset = 0;
+    return _fetch();
   }
 
-  void removeTopCard() {
-    // Remove the first item and add a new one to the end
-    state = [
-      ...state.sublist(1),
-      WordPair.random(),
-    ];
+  Future<List<Pokemon>> _fetch() async {
+    final service = ref.read(pokemonServiceProvider);
+    return service.fetchPokemon(offset: _offset, limit: _limit);
+  }
+
+  Future<void> loadMore() async {
+    // Avoid loading if already loading
+    if (state.isLoading) return;
+
+    final currentList = state.value ?? [];
+    _offset += _limit;
+    
+    // We want to keep displaying the current list while loading more
+    // So we don't set state to loading directly effectively clearing the screen
+    // Instead we just append when done.
+    // However, AsyncNotifier handles this gracefully if we handle it right.
+    
+    try {
+      final newItems = await _fetch();
+      state = AsyncValue.data([...currentList, ...newItems]);
+    } catch (e, stack) {
+      state = AsyncValue.error(e, stack);
+    }
+  }
+
+  void removeTopPokemon() {
+    final currentList = state.value;
+    if (currentList != null && currentList.isNotEmpty) {
+      final newList = currentList.sublist(1);
+      state = AsyncValue.data(newList);
+
+      // Prefetch when running low
+      if (newList.length < 5) {
+        loadMore();
+      }
+    }
   }
 }
 
-final currentWordProvider = NotifierProvider<CurrentWordNotifier, WordPair>(
-  () => CurrentWordNotifier(),
-);
-
-class CurrentWordNotifier extends Notifier<WordPair> {
-  @override
-  WordPair build() => WordPair.random();
-
-  void nextWord() {
-    state = WordPair.random();
-  }
-}
-
-final favoritesProvider = NotifierProvider<FavoritesNotifier, List<WordPair>>(
+final favoritesProvider = NotifierProvider<FavoritesNotifier, List<Pokemon>>(
   () {
     return FavoritesNotifier();
   },
 );
 
-class FavoritesNotifier extends Notifier<List<WordPair>> {
+class FavoritesNotifier extends Notifier<List<Pokemon>> {
   late Box _box;
 
   @override
-  List<WordPair> build() {
+  List<Pokemon> build() {
     _box = Hive.box('favorites');
-    final stored = _box.keys.map((key) {
-      final str = key as String;
-      final parts = str.split('|');
-      return WordPair(parts[0], parts[1]);
-    }).toList();
+    // Using values since we will store the Map
+    final stored = _box.values.map((e) {
+      try {
+        if (e is Map) {
+             return Pokemon.fromJson(Map<String, dynamic>.from(e));
+        }
+        // Fallback or ignore invalid data from previous versions (WordPair)
+        return null;
+      } catch (_) {
+        return null;
+      }
+    }).whereType<Pokemon>().toList();
+    
     return stored;
   }
 
-  void toggleFavorite(WordPair current) {
-    final key = "${current.first}|${current.second}";
+  void toggleFavorite(Pokemon current) {
     if (state.contains(current)) {
-      _box.delete(key);
-      state = state.where((p) => p != current).toList();
+      removeFavorite(current);
     } else {
-      _box.put(key, true);
-      state = [...state, current];
+      addFavorite(current);
+    }
+  }
+  
+  void addFavorite(Pokemon p) {
+    if (!state.contains(p)) {
+      _box.put(p.name, {'name': p.name, 'url': p.url});
+      state = [...state, p];
     }
   }
 
-  void removeFavorite(WordPair pair) {
-    final key = "${pair.first}|${pair.second}";
-    _box.delete(key);
-    state = state.where((p) => p != pair).toList();
+  void removeFavorite(Pokemon p) {
+    _box.delete(p.name);
+    state = state.where((item) => item != p).toList();
   }
 }
 
@@ -151,53 +187,71 @@ class MyApp extends ConsumerWidget {
 class GeneratorPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentWordPair = ref.watch(currentWordProvider);
+    final pokemonListAsync = ref.watch(pokemonListProvider);
     final favorites = ref.watch(favoritesProvider);
 
-    IconData icon;
-    if (favorites.contains(currentWordPair)) {
-      icon = Icons.favorite;
-    } else {
-      icon = Icons.favorite_border;
-    }
+    return pokemonListAsync.when(
+      loading: () => Center(child: CircularProgressIndicator()),
+      error: (err, stack) => Center(child: Text('Error: $err')),
+      data: (pokemonList) {
+        if (pokemonList.isEmpty) {
+             return Center(child: Text('No Pokemon found!'));
+        }
+        
+        // We consider the first one as "Current" for the buttons below, 
+        // effectively syncing with the top card of the swiper.
+        final currentPokemon = pokemonList.first;
 
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Center(child: SwipePage()),
-          SizedBox(height: 10),
-          Row(
-            mainAxisSize: MainAxisSize.min,
+        IconData icon;
+        if (favorites.contains(currentPokemon)) {
+          icon = Icons.favorite;
+        } else {
+          icon = Icons.favorite_border;
+        }
+
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              ElevatedButton.icon(
-                onPressed: () {
-                  ref
-                      .read(favoritesProvider.notifier)
-                      .toggleFavorite(currentWordPair);
-                },
-                icon: Icon(icon),
-                label: Text('Like'),
+              Expanded(
+                child: Center(child: SwipePage(pokemonList: pokemonList)),
               ),
-              SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: () {
-                  ref.read(currentWordProvider.notifier).nextWord();
-                },
-                child: Text('Next'),
+              SizedBox(height: 10),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      ref
+                          .read(favoritesProvider.notifier)
+                          .toggleFavorite(currentPokemon);
+                    },
+                    icon: Icon(icon),
+                    label: Text('Like'),
+                  ),
+                  SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: () {
+                        // "Next" just removes the top card, effectively swiping
+                        ref.read(pokemonListProvider.notifier).removeTopPokemon();
+                    },
+                    child: Text('Next'),
+                  ),
+                ],
               ),
+              SizedBox(height: 20),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
 
 class BigCard extends StatelessWidget {
-  const BigCard({super.key, required this.pair});
+  const BigCard({super.key, required this.pokemon});
 
-  final WordPair pair;
+  final Pokemon pokemon;
 
   @override
   Widget build(BuildContext context) {
@@ -212,9 +266,9 @@ class BigCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Text(
-          pair.asLowerCase,
+          pokemon.name,
           style: style,
-          semanticsLabel: "${pair.first} ${pair.second}",
+          semanticsLabel: pokemon.name,
         ),
       ),
     );
@@ -238,9 +292,9 @@ class FavoritesPage extends ConsumerWidget {
             'You have ${favorites.length} favorites:',
           ),
         ),
-        for (var pair in favorites)
+        for (var p in favorites)
           Dismissible(
-            key: Key(pair.asLowerCase),
+            key: Key(p.name),
             background: Container(
               color: Colors.red,
               alignment: Alignment.centerRight,
@@ -249,11 +303,11 @@ class FavoritesPage extends ConsumerWidget {
             ),
             direction: DismissDirection.endToStart,
             onDismissed: (direction) {
-              ref.read(favoritesProvider.notifier).removeFavorite(pair);
+              ref.read(favoritesProvider.notifier).removeFavorite(p);
             },
             child: ListTile(
               leading: Icon(Icons.favorite),
-              title: Text(pair.asLowerCase),
+              title: Text(p.name),
             ),
           ),
       ],
@@ -262,36 +316,52 @@ class FavoritesPage extends ConsumerWidget {
 }
 
 class SwipePage extends ConsumerWidget {
+  final List<Pokemon> pokemonList;
+  
+  const SwipePage({Key? key, required this.pokemonList}) : super(key: key);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final deck = ref.watch(deckProvider);
-
-    return Center(
-      child: SizedBox(
+    // pokemonList is passed from parent to avoid async issues here?
+    // Actually, CardSwiper needs the count.
+    
+    return SizedBox(
         height: 400, // Constrain the height
         child: CardSwiper(
-          cardsCount: deck.length,
+          cardsCount: pokemonList.length,
           numberOfCardsDisplayed: 2, // Shows the stack effect
-
+          
           // 1. Build the cards
           cardBuilder: (context, index, horizontalOffset, verticalOffset) {
-            return BigCard(pair: deck[index]);
+             // Safety check
+             if (index >= pokemonList.length) return SizedBox();
+             return BigCard(pokemon: pokemonList[index]);
           },
 
           // 2. Handle Swipes
           onSwipe: (previousIndex, currentIndex, direction) {
-            final swipedPair = deck[previousIndex];
+            final swipedPokemon = pokemonList[previousIndex];
 
             if (direction == CardSwiperDirection.right) {
-              ref.read(favoritesProvider.notifier).toggleFavorite(swipedPair);
+              ref.read(favoritesProvider.notifier).addFavorite(swipedPokemon);
             }
 
             // Remove the card from our state to keep the lists synced
-            ref.read(deckProvider.notifier).removeTopCard();
+            // Notes: CardSwiper handles the UI removal animation.
+            // We need to update our state so that "Current" (index 0) updates.
+            // But we should do it *after* the swipe? 
+            // `onSwipe` is called when swipe action is detected/completed?
+            // "Returns true if the swipe is allowed".
+            // It seems `onSwipe` runs before the animation completes fully?
+            // If we remove the item from the list IMMEDIATELY, the CardSwiper might get confused 
+            // because the data source changed under its feet while it's animating?
+            // Actually `flutter_card_swiper` recommends state updates.
+            
+            // Let's remove it.
+            ref.read(pokemonListProvider.notifier).removeTopPokemon();
             return true;
           },
         ),
-      ),
     );
   }
 }
