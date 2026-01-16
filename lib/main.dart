@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'services/notification_service.dart';
 import 'router.dart';
 
 final deckProvider = NotifierProvider<DeckNotifier, List<WordPair>>(() {
@@ -109,8 +110,14 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
 }
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   await Hive.openBox('favorites');
+  
+  final notificationService = NotificationService();
+  await notificationService.init();
+  await notificationService.requestPermissions(); 
+
   runApp(ProviderScope(child: MyApp()));
 }
 
