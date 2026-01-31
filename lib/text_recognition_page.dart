@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'models/pokemon.dart';
 import 'services/pokemon_service.dart';
 import 'widgets/pokemon_card.dart';
+import 'main.dart';
 
 class TextRecognitionPage extends ConsumerStatefulWidget {
   const TextRecognitionPage({super.key});
@@ -162,7 +163,33 @@ class _TextRecognitionPageState extends ConsumerState<TextRecognitionPage> {
                    itemBuilder: (context, index) {
                      final result = _scanResults[index];
                      if (result.pokemon != null) {
-                       return PokemonCard(pokemon: result.pokemon!);
+                       return Stack(
+                         children: [
+                           PokemonCard(pokemon: result.pokemon!),
+                           Positioned(
+                             top: 8,
+                             right: 8,
+                             child: Consumer(
+                               builder: (context, ref, child) {
+                                 final favorites = ref.watch(favoritesProvider);
+                                 final isFavorite = favorites.contains(result.pokemon!);
+                                 return IconButton(
+                                   onPressed: () {
+                                     ref.read(favoritesProvider.notifier).toggleFavorite(result.pokemon!);
+                                   },
+                                   icon: Icon(
+                                     isFavorite ? Icons.favorite : Icons.favorite_border,
+                                     color: isFavorite ? Colors.red : Colors.grey,
+                                   ),
+                                   style: IconButton.styleFrom(
+                                     backgroundColor: Colors.white.withOpacity(0.9),
+                                   ),
+                                 );
+                               },
+                             ),
+                           ),
+                         ],
+                       );
                      } else {
                        return Card(
                          color: Colors.grey[900],
