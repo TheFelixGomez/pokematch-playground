@@ -5,6 +5,7 @@ import 'auth_service.dart';
 import 'main.dart';
 import 'login_page.dart';
 import 'settings_page.dart';
+import 'text_recognition_page.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authServiceProvider);
@@ -48,6 +49,15 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/favorites',
                 builder: (context, state) => FavoritesPage(),
+              ),
+            ],
+          ),
+
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/ocr',
+                builder: (context, state) => const TextRecognitionPage(),
               ),
             ],
           ),
@@ -99,6 +109,10 @@ class _MainScreenState extends State<MainScreen> {
                   label: 'Favorites',
                 ),
                 NavigationDestination(
+                  icon: Icon(Icons.camera_alt),
+                  label: 'OCR',
+                ),
+                NavigationDestination(
                   icon: Icon(Icons.settings),
                   label: 'Settings',
                 ),
@@ -130,6 +144,10 @@ class _MainScreenState extends State<MainScreen> {
                       NavigationRailDestination(
                         icon: Icon(Icons.favorite),
                         label: Text('Favorites'),
+                      ),
+                      NavigationRailDestination(
+                        icon: Icon(Icons.camera_alt),
+                        label: Text('OCR'),
                       ),
                       NavigationRailDestination(
                         icon: Icon(Icons.settings),
