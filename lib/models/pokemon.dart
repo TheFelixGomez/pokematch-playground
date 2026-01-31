@@ -1,8 +1,19 @@
 class Pokemon {
   final String name;
-  final String url;
+  final String? url;
+  final int? explicitId;
+  final String? imageUrl;
+  final List<Map<String, dynamic>>? stats;
+  final List<String>? types;
 
-  Pokemon({required this.name, required this.url});
+  Pokemon({
+    required this.name,
+    this.url,
+    this.explicitId,
+    this.imageUrl,
+    this.stats,
+    this.types,
+  });
 
   factory Pokemon.fromJson(Map<String, dynamic> json) {
     return Pokemon(
@@ -11,10 +22,34 @@ class Pokemon {
     );
   }
 
+  factory Pokemon.fromDetailJson(Map<String, dynamic> json) {
+    final statsList = (json['stats'] as List)
+        .map((s) => {
+              'name': s['stat']['name'],
+              'value': s['base_stat'],
+            })
+        .toList();
+
+    final typesList = (json['types'] as List)
+        .map((t) => t['type']['name'] as String)
+        .toList();
+
+    return Pokemon(
+      name: json['name'] as String,
+      explicitId: json['id'] as int,
+      imageUrl: json['sprites']['front_default'] as String?,
+      stats: statsList,
+      types: typesList,
+    );
+  }
+
   // Extract ID from URL for potential future use (e.g., image fetching)
   // URL format: https://pokeapi.co/api/v2/pokemon/1/
   int get id {
-    final uri = Uri.parse(url);
+    if (explicitId != null) return explicitId!;
+    if (url == null) return 0;
+    
+    final uri = Uri.parse(url!);
     final segments = uri.pathSegments;
     // pathSegments splits by /, so "pokemon/1/" gives ["api", "v2", "pokemon", "1", ""]
     // We want the one before the last empty one, or the last non-empty one.

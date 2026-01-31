@@ -26,4 +26,14 @@ class PokemonService {
       throw Exception('Failed to load pokemon');
     }
   }
+
+  Future<Pokemon?> fetchPokemonDetails(String name) async {
+    try {
+      final response = await _dio.get('https://pokeapi.co/api/v2/pokemon/${name.toLowerCase()}');
+      return Pokemon.fromDetailJson(response.data);
+    } catch (e) {
+      print('Error fetching pokemon details: $e');
+      return null;
+    }
+  }
 }
