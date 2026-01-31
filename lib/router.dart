@@ -93,7 +93,7 @@ class _MainScreenState extends State<MainScreen> {
         if (constraints.maxWidth < 600) {
           return Scaffold(
             appBar: AppBar(
-              title: Text('Namer App'),
+              title: Text('Pokemon Matching'),
             ),
             body: Container(
               color: Theme.of(context).colorScheme.primaryContainer,
@@ -130,7 +130,7 @@ class _MainScreenState extends State<MainScreen> {
         } else {
           return Scaffold(
             appBar: AppBar(
-              title: Text('Namer App'),
+              title: Text('Pokemon Matching'),
             ),
             body: Row(
               children: [
