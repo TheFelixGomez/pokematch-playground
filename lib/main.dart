@@ -112,7 +112,7 @@ class FavoritesNotifier extends Notifier<List<Pokemon>> {
   
   void addFavorite(Pokemon p) {
     if (!state.contains(p)) {
-      _box.put(p.name, {'name': p.name, 'url': p.url});
+      _box.put(p.name, p.toJson());
       state = [...state, p];
     }
   }
@@ -238,46 +238,6 @@ class GeneratorPage extends ConsumerWidget {
 }
 
 
-
-class FavoritesPage extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final favorites = ref.watch(favoritesProvider);
-
-    if (favorites.isEmpty) {
-      return Center(child: Text('No favorites yet.'));
-    }
-
-    return ListView(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(20),
-          child: Text(
-            'You have ${favorites.length} favorites:',
-          ),
-        ),
-        for (var p in favorites)
-          Dismissible(
-            key: Key(p.name),
-            background: Container(
-              color: Colors.red,
-              alignment: Alignment.centerRight,
-              padding: EdgeInsets.only(right: 20),
-              child: Icon(Icons.delete, color: Colors.white),
-            ),
-            direction: DismissDirection.endToStart,
-            onDismissed: (direction) {
-              ref.read(favoritesProvider.notifier).removeFavorite(p);
-            },
-            child: ListTile(
-              leading: Icon(Icons.favorite),
-              title: Text(p.name),
-            ),
-          ),
-      ],
-    );
-  }
-}
 
 class SwipePage extends ConsumerWidget {
   final List<Pokemon> pokemonList;

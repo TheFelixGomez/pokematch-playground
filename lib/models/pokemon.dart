@@ -16,9 +16,26 @@ class Pokemon {
   });
 
   factory Pokemon.fromJson(Map<String, dynamic> json) {
+    // Handle both basic API response and full stored data
+    List<Map<String, dynamic>>? statsList;
+    if (json['stats'] != null) {
+      statsList = (json['stats'] as List)
+          .map((s) => Map<String, dynamic>.from(s))
+          .toList();
+    }
+
+    List<String>? typesList;
+    if (json['types'] != null) {
+      typesList = (json['types'] as List).cast<String>();
+    }
+
     return Pokemon(
       name: json['name'] as String,
-      url: json['url'] as String,
+      url: json['url'] as String?,
+      explicitId: json['id'] as int?,
+      imageUrl: json['imageUrl'] as String?,
+      stats: statsList,
+      types: typesList,
     );
   }
 
@@ -54,6 +71,17 @@ class Pokemon {
     // pathSegments splits by /, so "pokemon/1/" gives ["api", "v2", "pokemon", "1", ""]
     // We want the one before the last empty one, or the last non-empty one.
     return int.parse(segments[segments.length - 2]); 
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'url': url,
+      'id': explicitId,
+      'imageUrl': imageUrl,
+      'stats': stats,
+      'types': types,
+    };
   }
 
   @override

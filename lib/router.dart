@@ -6,6 +6,7 @@ import 'main.dart';
 import 'login_page.dart';
 import 'settings_page.dart';
 import 'text_recognition_page.dart';
+import 'pages/favorites_page.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authServiceProvider);
@@ -48,7 +49,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/favorites',
-                builder: (context, state) => FavoritesPage(),
+                builder: (context, state) => const FavoritesPage(),
               ),
             ],
           ),
