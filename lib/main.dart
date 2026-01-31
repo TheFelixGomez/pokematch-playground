@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_card_swiper/flutter_card_swiper.dart';
+import 'package:appinio_swiper/appinio_swiper.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/notification_service.dart';
@@ -157,6 +157,8 @@ void main() async {
   runApp(ProviderScope(child: MyApp()));
 }
 
+final swiperControllerProvider = Provider.autoDispose((ref) => AppinioSwiperController());
+
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
@@ -201,6 +203,7 @@ class GeneratorPage extends ConsumerWidget {
         // We consider the first one as "Current" for the buttons below, 
         // effectively syncing with the top card of the swiper.
         final currentPokemon = pokemonList.first;
+        final controller = ref.watch(swiperControllerProvider);
 
         IconData icon;
         if (favorites.contains(currentPokemon)) {
@@ -222,9 +225,7 @@ class GeneratorPage extends ConsumerWidget {
                 children: [
                   ElevatedButton.icon(
                     onPressed: () {
-                      ref
-                          .read(favoritesProvider.notifier)
-                          .toggleFavorite(currentPokemon);
+                      controller.swipeRight();
                     },
                     icon: Icon(icon),
                     label: Text('Like'),
@@ -233,7 +234,7 @@ class GeneratorPage extends ConsumerWidget {
                   ElevatedButton(
                     onPressed: () {
                         // "Next" just removes the top card, effectively swiping
-                        ref.read(pokemonListProvider.notifier).removeTopPokemon();
+                        controller.swipeLeft();
                     },
                     child: Text('Next'),
                   ),
@@ -322,46 +323,108 @@ class SwipePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // pokemonList is passed from parent to avoid async issues here?
-    // Actually, CardSwiper needs the count.
-    
+    final controller = ref.watch(swiperControllerProvider);
+
     return SizedBox(
         height: 400, // Constrain the height
-        child: CardSwiper(
-          cardsCount: pokemonList.length,
-          numberOfCardsDisplayed: 2, // Shows the stack effect
-          
-          // 1. Build the cards
-          cardBuilder: (context, index, horizontalOffset, verticalOffset) {
-             // Safety check
-             if (index >= pokemonList.length) return SizedBox();
-             return BigCard(pokemon: pokemonList[index]);
+        child: AppinioSwiper(
+          key: ValueKey(pokemonList.first.name),
+          controller: controller,
+          backgroundCardCount: 2,
+          cardCount: pokemonList.length,
+          cardBuilder: (BuildContext context, int index) {
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                BigCard(pokemon: pokemonList[index]),
+                SwipeFeedback(controller: controller, index: index),
+              ],
+            );
           },
-
-          // 2. Handle Swipes
-          onSwipe: (previousIndex, currentIndex, direction) {
+          onSwipeEnd: (int previousIndex, int targetIndex, SwiperActivity activity) {
             final swipedPokemon = pokemonList[previousIndex];
 
-            if (direction == CardSwiperDirection.right) {
+            if (activity.direction == AxisDirection.right) {
               ref.read(favoritesProvider.notifier).addFavorite(swipedPokemon);
             }
 
             // Remove the card from our state to keep the lists synced
-            // Notes: CardSwiper handles the UI removal animation.
-            // We need to update our state so that "Current" (index 0) updates.
-            // But we should do it *after* the swipe? 
-            // `onSwipe` is called when swipe action is detected/completed?
-            // "Returns true if the swipe is allowed".
-            // It seems `onSwipe` runs before the animation completes fully?
-            // If we remove the item from the list IMMEDIATELY, the CardSwiper might get confused 
-            // because the data source changed under its feet while it's animating?
-            // Actually `flutter_card_swiper` recommends state updates.
-            
-            // Let's remove it.
             ref.read(pokemonListProvider.notifier).removeTopPokemon();
-            return true;
           },
         ),
+    );
+  }
+}
+
+class SwipeFeedback extends StatelessWidget {
+  final AppinioSwiperController controller;
+  final int index;
+
+  const SwipeFeedback({
+    super.key,
+    required this.controller,
+    required this.index,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, child) {
+        final position = controller.position;
+        // Only show feedback for the top card being swiped
+        if (position == null || controller.cardIndex != index) {
+          return const SizedBox.shrink();
+        }
+
+        final offset = position.offset;
+        // Simple threshold for opacity (e.g. 100 pixels)
+        final double opacity = (offset.dx.abs() / 100).clamp(0.0, 1.0);
+
+        if (offset.dx > 0) {
+          // Swipe Right - Like
+          return Positioned.fill(
+            child: Opacity(
+              opacity: opacity,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20), // Match card radius if possible
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.favorite,
+                    color: Colors.green,
+                    size: 100,
+                  ),
+                ),
+              ),
+            ),
+          );
+        } else if (offset.dx < 0) {
+          // Swipe Left - Discard
+          return Positioned.fill(
+            child: Opacity(
+              opacity: opacity,
+              child: Container(
+                decoration: BoxDecoration(
+                   color: Colors.red.withOpacity(0.2),
+                   borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.close,
+                    color: Colors.red,
+                    size: 100,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
+        return const SizedBox.shrink();
+      },
     );
   }
 }
