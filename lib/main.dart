@@ -265,6 +265,9 @@ class SwipePage extends ConsumerWidget {
             );
           },
       onSwipeEnd: (int previousIndex, int targetIndex, SwiperActivity activity) {
+        // Only process actual swipes, not cancelled ones
+        if (activity is! Swipe) return;
+        
         final swipedPokemon = pokemonList[previousIndex];
 
         if (activity.direction == AxisDirection.right) {
