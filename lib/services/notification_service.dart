@@ -23,12 +23,15 @@ class NotificationService {
     if (_isInitialized) return;
 
     tz.initializeTimeZones();
-    final timeZoneName = await FlutterTimezone.getLocalTimezone();
     try {
-        tz.setLocalLocation(tz.getLocation(timeZoneName.toString()));
+      final timezoneInfo = await FlutterTimezone.getLocalTimezone();
+      // TimezoneInfo has an identifier property that contains the IANA name
+      final timeZoneName = timezoneInfo.identifier ?? 'UTC';
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
     } catch (e) {
-        // Fallback or handle error if timezone not found
-        debugPrint("Could not set local location: $e");
+      // Fallback to UTC if timezone not found
+      debugPrint("Could not set local location: $e - falling back to UTC");
+      tz.setLocalLocation(tz.UTC);
     }
 
     // Android initialization
