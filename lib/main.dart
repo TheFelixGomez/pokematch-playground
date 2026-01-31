@@ -7,6 +7,7 @@ import 'services/notification_service.dart';
 import 'router.dart';
 import 'models/pokemon.dart';
 import 'services/pokemon_service.dart';
+import 'widgets/pokemon_card.dart';
 
 // Service Provider
 final pokemonServiceProvider = Provider((ref) => PokemonService());
@@ -28,7 +29,15 @@ class PokemonListNotifier extends AsyncNotifier<List<Pokemon>> {
 
   Future<List<Pokemon>> _fetch() async {
     final service = ref.read(pokemonServiceProvider);
-    return service.fetchPokemon(offset: _offset, limit: _limit);
+    final basicList = await service.fetchPokemon(offset: _offset, limit: _limit);
+    
+    // Fetch full details for each Pokemon
+    final detailedList = await Future.wait(
+      basicList.map((p) => service.fetchPokemonDetails(p.name)),
+    );
+    
+    // Filter out nulls (failed fetches)
+    return detailedList.whereType<Pokemon>().toList();
   }
 
   Future<void> loadMore() async {
@@ -176,7 +185,7 @@ class MyApp extends ConsumerWidget {
       darkTheme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
+          seedColor: Colors.red,
           brightness: Brightness.dark,
         ),
       ),
@@ -220,27 +229,6 @@ class GeneratorPage extends ConsumerWidget {
                 child: Center(child: SwipePage(pokemonList: pokemonList)),
               ),
               SizedBox(height: 10),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      controller.swipeRight();
-                    },
-                    icon: Icon(icon),
-                    label: Text('Like'),
-                  ),
-                  SizedBox(width: 10),
-                  ElevatedButton(
-                    onPressed: () {
-                        // "Next" just removes the top card, effectively swiping
-                        controller.swipeLeft();
-                    },
-                    child: Text('Next'),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20),
             ],
           ),
         );
@@ -249,32 +237,7 @@ class GeneratorPage extends ConsumerWidget {
   }
 }
 
-class BigCard extends StatelessWidget {
-  const BigCard({super.key, required this.pokemon});
 
-  final Pokemon pokemon;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final style = theme.textTheme.displayMedium!.copyWith(
-      color: theme.colorScheme.onPrimary,
-    );
-
-    return Card(
-      color: theme.colorScheme.primary,
-      elevation: 8.0,
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Text(
-          pokemon.name,
-          style: style,
-          semanticsLabel: pokemon.name,
-        ),
-      ),
-    );
-  }
-}
 
 class FavoritesPage extends ConsumerWidget {
   @override
@@ -325,33 +288,32 @@ class SwipePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.watch(swiperControllerProvider);
 
-    return SizedBox(
-        height: 400, // Constrain the height
-        child: AppinioSwiper(
-          key: ValueKey(pokemonList.first.name),
-          controller: controller,
-          backgroundCardCount: 2,
-          cardCount: pokemonList.length,
-          cardBuilder: (BuildContext context, int index) {
+    return AppinioSwiper(
+      key: ValueKey(pokemonList.first.name),
+      controller: controller,
+      backgroundCardCount: 1,
+      backgroundCardScale: 1.0,
+      backgroundCardOffset: Offset.zero,
+      cardCount: pokemonList.length,
+      cardBuilder: (BuildContext context, int index) {
             return Stack(
               fit: StackFit.expand,
               children: [
-                BigCard(pokemon: pokemonList[index]),
+                PokemonCard(pokemon: pokemonList[index]),
                 SwipeFeedback(controller: controller, index: index),
               ],
             );
           },
-          onSwipeEnd: (int previousIndex, int targetIndex, SwiperActivity activity) {
-            final swipedPokemon = pokemonList[previousIndex];
+      onSwipeEnd: (int previousIndex, int targetIndex, SwiperActivity activity) {
+        final swipedPokemon = pokemonList[previousIndex];
 
-            if (activity.direction == AxisDirection.right) {
-              ref.read(favoritesProvider.notifier).addFavorite(swipedPokemon);
-            }
+        if (activity.direction == AxisDirection.right) {
+          ref.read(favoritesProvider.notifier).addFavorite(swipedPokemon);
+        }
 
-            // Remove the card from our state to keep the lists synced
-            ref.read(pokemonListProvider.notifier).removeTopPokemon();
-          },
-        ),
+        // Remove the card from our state to keep the lists synced
+        ref.read(pokemonListProvider.notifier).removeTopPokemon();
+      },
     );
   }
 }
