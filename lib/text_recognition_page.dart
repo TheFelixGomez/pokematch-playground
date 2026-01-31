@@ -55,9 +55,17 @@ class _TextRecognitionPageState extends ConsumerState<TextRecognitionPage> {
 
       if (lines.isNotEmpty) {
         final futures = lines.map((line) async {
-          // Simple extraction: take the first word.
-          final firstWord = line.split(RegExp(r'\s+')).first;
-          final pokemon = await _pokemonService.fetchPokemonDetails(firstWord);
+          String query;
+          // Check if line contains a number (ID)
+          final numberMatch = RegExp(r'\d+').firstMatch(line);
+          if (numberMatch != null) {
+            query = numberMatch.group(0)!;
+          } else {
+            // Fallback to first word
+            query = line.split(RegExp(r'\s+')).first;
+          }
+
+          final pokemon = await _pokemonService.fetchPokemonDetails(query);
           return (line: line, pokemon: pokemon);
         });
 
