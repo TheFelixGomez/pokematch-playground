@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:namer_app/main.dart';
-import 'package:namer_app/services/pokemon_service.dart';
-import 'package:namer_app/models/pokemon.dart';
+import 'package:pokematch_playground/main.dart';
+import 'package:pokematch_playground/services/pokemon_service.dart';
+import 'package:pokematch_playground/models/pokemon.dart';
 import 'package:mockito/mockito.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:hive/hive.dart';

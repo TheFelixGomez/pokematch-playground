@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.namer_app"
+    namespace = "com.pokematch.playground"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -22,7 +22,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.namer_app"
+        applicationId = "com.pokematch.playground"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

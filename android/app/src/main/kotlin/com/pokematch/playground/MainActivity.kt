@@ -1,4 +1,4 @@
-package com.example.namer_app
+package com.pokematch.playground
 
 import io.flutter.embedding.android.FlutterActivity
 

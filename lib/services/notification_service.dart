@@ -55,9 +55,9 @@ class NotificationService {
     // Windows initialization (if applicable)
     final WindowsInitializationSettings initializationSettingsWindows =
         WindowsInitializationSettings(
-            appName: 'Namer App',
+            appName: 'Pokematch Playground',
             guid: '81C376F8-6D33-46C3-936A-157973C33C4F',
-            appUserModelId: 'com.namer_app.namer_app',
+            appUserModelId: 'com.pokematch.playground',
         );
 
     final InitializationSettings initializationSettings = InitializationSettings(

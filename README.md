@@ -1,4 +1,4 @@
-# namer_app
+# Pokematch Playground
 
 A new Flutter project.
 
